@@ -1,0 +1,235 @@
+import pygame
+import random
+import math
+
+# Initialisierung von Pygame
+pygame.init()
+
+# Fensterdimensionen
+BREITE = 800
+HOEHE = 600
+FENSTER = pygame.display.set_mode((BREITE, HOEHE))
+pygame.display.set_caption("Evolutionäre Simulation")
+
+# Farben
+WEISS = (255, 255, 255)
+SCHWARZ = (0, 0, 0)
+# GRUEN wird dynamisch erzeugt
+#ROT = (255, 0, 0)
+BLAU = (0, 0, 255)
+
+# Feldgröße in Pixeln
+FELD_GROESSE = 10
+
+# MIN und MAX Werte Lebewesen
+MAX_geschwindigkeit = 5
+MIN_geschwindigkeit = 1
+
+MIN_ess_geschwindigkeit = 1
+MAX_ess_geschwindigkeit = 5
+
+MIN_energie_kapazitaet = 50
+MAX_energie_kapazitaet = 500
+
+#Einstellungen
+GRAS_WACHSTUM = 0.1
+
+
+
+class Lebewesen:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.groesse = 5
+        self.geschwindigkeit = random.uniform(MIN_geschwindigkeit, MAX_geschwindigkeit)
+        self.energie_kapazitaet = random.randint(MIN_energie_kapazitaet, MAX_energie_kapazitaet) #Maximale Energie
+        self.energie = self.energie_kapazitaet / 5 #Startenergie
+        self.fress_radius = 20 #Radius, in dem gegessen werden kann
+        self.ess_geschwindigkeit = random.uniform(MIN_ess_geschwindigkeit, MAX_ess_geschwindigkeit)  # Neue Essgeschwindigkeit
+        self.farbe = (random.randint(50, 255), random.randint(50, 255), random.randint(50, 255))
+       
+        
+    #HAUPTFUNKTION Bewegung des Lebewesens
+    def bewegen(self, umgebung):
+        if self.energie > 0:
+            # finde Feld auf dem sich Lebewesen befindet
+            feld_x = int(self.x // umgebung.feld_groesse)
+            feld_y = int(self.y // umgebung.feld_groesse)
+
+            # stelle sicher dass die feld_x und feld_y werte valid sind
+            if 0 <= feld_x < umgebung.anzahl_zellen_breite and 0 <= feld_y < umgebung.anzahl_zellen_hoehe:
+                # finde das Feld mit dem meisten Gras in der nähe
+                bestes_feld_x = feld_x
+                bestes_feld_y = feld_y
+                maximales_gras = umgebung.gras_menge[feld_y][feld_x]
+
+
+                # Wenn aktuelles Feld maximales Gras hat, nicht weiter suchen
+                ist_aktuell_max = True
+
+                for dy in range(-2, 3):
+                    for dx in range(-2, 3):
+                        nachbar_feld_x = feld_x + dx
+                        nachbar_feld_y = feld_y + dy
+
+                        if 0 <= nachbar_feld_x < umgebung.anzahl_zellen_breite and 0 <= nachbar_feld_y < umgebung.anzahl_zellen_hoehe:
+                            if umgebung.gras_menge[nachbar_feld_y][nachbar_feld_x] > maximales_gras:
+                                maximales_gras = umgebung.gras_menge[nachbar_feld_y][nachbar_feld_x]
+                                bestes_feld_x = nachbar_feld_x
+                                bestes_feld_y = nachbar_feld_y
+                                ist_aktuell_max = False # es gibt doch ein größeres Feld
+
+                if ist_aktuell_max == False:
+                    # setze bewegungsrichtung zum besten Feld
+                    ziel_x = bestes_feld_x * umgebung.feld_groesse + umgebung.feld_groesse // 2
+                    ziel_y = bestes_feld_y * umgebung.feld_groesse + umgebung.feld_groesse // 2
+
+                    diff_x = ziel_x - self.x
+                    diff_y = ziel_y - self.y
+
+                    distanz = math.sqrt(diff_x**2 + diff_y**2)
+
+                    if distanz > 0:
+                        richtungs_x = diff_x / distanz
+                        richtungs_y = diff_y / distanz
+
+                        self.x += richtungs_x * self.geschwindigkeit
+                        self.y += richtungs_y * self.geschwindigkeit
+            
+            
+            self.energie -= 0.1 + self.geschwindigkeit / 2 #Energieverbrauch
+
+        # Begrenzung innerhalb des Fensters
+        self.x = max(0, min(self.x, BREITE - self.groesse))
+        self.y = max(0, min(self.y, HOEHE - self.groesse))
+
+
+
+    #HAUPTFUNKTION fressen des Lebewesens
+    def fressen(self, umgebung):
+        feld_x = int(self.x // umgebung.feld_groesse)
+        feld_y = int(self.y // umgebung.feld_groesse)
+        
+        if 0 <= feld_x < umgebung.anzahl_zellen_breite and 0 <= feld_y < umgebung.anzahl_zellen_hoehe:
+             if umgebung.gras_menge[feld_y][feld_x] > 0:
+                 #Fressen bis zur Kapazität oder bis alles gefressen wurde
+                 energie_gewinn = min(umgebung.gras_menge[feld_y][feld_x], self.energie_kapazitaet - self.energie, self.ess_geschwindigkeit)
+                 self.energie += energie_gewinn
+                 umgebung.gras_menge[feld_y][feld_x] -= energie_gewinn
+
+    #HAUPTFUNKTION Fortpflanzung des Lebewesens
+    def fortpflanzen(self, umgebung):
+        if self.energie >= self.energie_kapazitaet:
+            self.energie /= 3  # Gib Energie für die Fortpflanzung ab
+            # Neues Lebewesen in der Nähe erschaffen
+            neues_lebewesen = Lebewesen(self.x + random.randint(-20, 20), self.y + random.randint(-20,20))
+            neues_lebewesen.geschwindigkeit = self.geschwindigkeit
+            neues_lebewesen.ess_geschwindigkeit = self.ess_geschwindigkeit
+            neues_lebewesen.energie_kapazitaet = self.energie_kapazitaet
+            neues_lebewesen.mutieren()
+            umgebung.lebewesen.append(neues_lebewesen)
+
+    def mutieren(self):
+        if random.random() < 0.1: # Mutationswahrscheinlichkeit (10%)
+            self.geschwindigkeit += random.uniform(-0.2, 0.2)
+            self.ess_geschwindigkeit += random.uniform(-0.2, 0.2)
+            self.energie_kapazitaet += random.randint(-10, 10)
+        
+        # Sicherstellen das kein Attribut zu kleine oder große werte hat
+        self.geschwindigkeit = max(MIN_geschwindigkeit, min(self.geschwindigkeit, MAX_geschwindigkeit))
+        self.ess_geschwindigkeit = max(MIN_ess_geschwindigkeit, min(self.ess_geschwindigkeit, MAX_ess_geschwindigkeit))
+        self.energie_kapazitaet = max(MIN_energie_kapazitaet, min(self.energie_kapazitaet, MAX_energie_kapazitaet))
+    
+    def sterben(self, umgebung):
+      if self.energie <= 0:
+         feld_x = int(self.x // umgebung.feld_groesse)
+         feld_y = int(self.y // umgebung.feld_groesse)
+         if 0 <= feld_x < umgebung.anzahl_zellen_breite and 0 <= feld_y < umgebung.anzahl_zellen_hoehe:
+                umgebung.gras_menge[feld_y][feld_x] = min(umgebung.gras_menge[feld_y][feld_x] + self.energie_kapazitaet / 2, 255)
+         return True
+      else:
+        return False
+
+
+    def zeichnen(self, oberflaeche):
+        pygame.draw.rect(oberflaeche, self.farbe, (self.x, self.y, self.groesse, self.groesse))
+
+class Umgebung:
+    def __init__(self):
+        self.breite = BREITE
+        self.hoehe = HOEHE
+        self.feld_groesse = FELD_GROESSE
+        self.anzahl_zellen_breite = self.breite // self.feld_groesse
+        self.anzahl_zellen_hoehe = self.hoehe // self.feld_groesse
+        self.gras_menge = [[0 for _ in range(self.anzahl_zellen_breite)] for _ in range(self.anzahl_zellen_hoehe)]
+        self.lebewesen = []
+        self.anzahl_lebewesen = 50
+        self.initialisiere_lebewesen()
+
+    def initialisiere_lebewesen(self):
+        for _ in range(self.anzahl_lebewesen):
+            feld_x = random.randint(0, self.anzahl_zellen_breite - 1)
+            feld_y = random.randint(0, self.anzahl_zellen_hoehe - 1)
+            x = feld_x * self.feld_groesse
+            y = feld_y * self.feld_groesse
+            neues_lebewesen = Lebewesen(x,y)
+            self.lebewesen.append(neues_lebewesen)
+        
+    def aktualisiere_gras(self):
+        for y in range(self.anzahl_zellen_hoehe):
+            for x in range(self.anzahl_zellen_breite):
+                if self.gras_menge[y][x] < 255:
+                    self.gras_menge[y][x] = min(self.gras_menge[y][x] + GRAS_WACHSTUM, 255)
+    
+    def aktualisiere(self):
+        lebewesen_zum_entfernen = []
+        for lebewesen in self.lebewesen:
+            lebewesen.bewegen(self)
+            lebewesen.fressen(self)
+            lebewesen.fortpflanzen(self)
+            if lebewesen.sterben(self):
+                lebewesen_zum_entfernen.append(lebewesen)
+
+        for lebewesen in lebewesen_zum_entfernen:
+           self.lebewesen.remove(lebewesen)
+
+    def zeichnen(self, oberflaeche):
+        oberflaeche.fill(SCHWARZ)  # Hintergrundfarbe ist jetzt schwarz
+
+        # Grasfelder zeichnen
+        for y in range(self.anzahl_zellen_hoehe):
+            for x in range(self.anzahl_zellen_breite):
+                gras_wert = self.gras_menge[y][x]
+                # Stufenlose Farbveränderung von weiß (0) zu dunkelgrün (255)
+                gruen_anteil = int((gras_wert / 255) * 255)
+                gruen_ton = (255 - gruen_anteil, 255, 255 - gruen_anteil) if gras_wert > 0 else (255,255,255)
+                pygame.draw.rect(oberflaeche, gruen_ton, (x * self.feld_groesse, y * self.feld_groesse, self.feld_groesse, self.feld_groesse))
+
+
+        # Lebewesen zeichnen
+        for lebewesen in self.lebewesen:
+            lebewesen.zeichnen(oberflaeche)
+
+
+# Hauptspielschleife
+def spiel_schleife():
+    umgebung = Umgebung()
+    spiel_laeuft = True
+    clock = pygame.time.Clock()
+
+    while spiel_laeuft:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                spiel_laeuft = False
+
+        umgebung.aktualisiere_gras()
+        umgebung.aktualisiere()
+        umgebung.zeichnen(FENSTER)
+        pygame.display.flip()
+
+        clock.tick(30)
+
+    pygame.quit()
+
+if __name__ == "__main__":
+    spiel_schleife()
