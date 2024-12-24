@@ -43,7 +43,7 @@ class Lebewesen:
         self.groesse = 5
         self.geschwindigkeit = random.uniform(MIN_geschwindigkeit, MAX_geschwindigkeit)
         self.energie_kapazitaet = random.randint(MIN_energie_kapazitaet, MAX_energie_kapazitaet) #Maximale Energie
-        self.energie = self.energie_kapazitaet / 5 #Startenergie
+        self.energie = self.energie_kapazitaet / 3 #Startenergie
         self.ess_geschwindigkeit = random.uniform(MIN_ess_geschwindigkeit, MAX_ess_geschwindigkeit)  # Neue Essgeschwindigkeit
         self.farbe = (random.randint(50, 255), random.randint(50, 255), random.randint(50, 255))
         self.nachkommen = 0
@@ -125,6 +125,7 @@ class Lebewesen:
             neues_lebewesen.geschwindigkeit = self.geschwindigkeit
             neues_lebewesen.ess_geschwindigkeit = self.ess_geschwindigkeit
             neues_lebewesen.energie_kapazitaet = self.energie_kapazitaet
+            neues_lebewesen.energie = self.energie / 5
             neues_lebewesen.mutieren()
             umgebung.lebewesen.append(neues_lebewesen)
             self.nachkommen += 1 # erhöhe die Nachkommenzahl
