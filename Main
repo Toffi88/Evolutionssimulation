@@ -1,6 +1,10 @@
 import pygame
 import random
 import math
+import matplotlib.pyplot as plt
+import numpy as np
+import multiprocessing
+import time
 
 # Initialisierung von Pygame
 pygame.init()
@@ -28,28 +32,46 @@ MIN_geschwindigkeit = 1
 MIN_ess_geschwindigkeit = 1
 MAX_ess_geschwindigkeit = 5
 
-MIN_energie_kapazitaet = 50 #Minimale Energiekapazität
-MAX_energie_kapazitaet = 500 #Maximale Energiekapazität
+MIN_energie_kapazitaet = 50
+MAX_energie_kapazitaet = 500
 
 #Einstellungen
-GRAS_WACHSTUM = 0.2
+GRAS_WACHSTUM = 0.1
+
+def plot_population_process(population_data, queue):
+    fig, ax = plt.subplots()
+    
+    while True:
+       if queue.qsize() == 0:
+         time.sleep(0.1)
+         continue
+       else:
+          population_data = queue.get()
+          if len(population_data) > 1:
+            ax.clear()  # Clear the axes for the next plot
+
+            x = np.arange(len(population_data))
+            y = population_data
+            ax.plot(x,y)
+            ax.set_xlabel("Ticks / 30")
+            ax.set_ylabel("Anzahl Lebewesen")
+            ax.set_title("Population Entwicklung")
+            plt.pause(0.01) #pause kurz um die UI zu zeigen
 
 
-
-#Lebewesen Klasse   
 class Lebewesen:
     def __init__(self, x, y):
-        self.x = x
-        self.y = y
         self.groesse = 5
+        self.x = x + self.groesse // 2
+        self.y = y + self.groesse // 2
         self.geschwindigkeit = random.uniform(MIN_geschwindigkeit, MAX_geschwindigkeit)
         self.energie_kapazitaet = random.randint(MIN_energie_kapazitaet, MAX_energie_kapazitaet) #Maximale Energie
-        self.energie = self.energie_kapazitaet / 3 #Startenergie
+        self.energie = self.energie_kapazitaet / 5 #Startenergie
         self.ess_geschwindigkeit = random.uniform(MIN_ess_geschwindigkeit, MAX_ess_geschwindigkeit)  # Neue Essgeschwindigkeit
         self.farbe = (random.randint(50, 255), random.randint(50, 255), random.randint(50, 255))
         self.nachkommen = 0
        
-
+        
     #HAUPTFUNKTION Bewegung des Lebewesens
     def bewegen(self, umgebung):
         # finde Feld auf dem sich Lebewesen befindet
@@ -89,12 +111,18 @@ class Lebewesen:
 
                 distanz = math.sqrt(diff_x**2 + diff_y**2)
 
-                if distanz > 0:
+                # Überprüfe, ob die Zielposition durch ein anderes Lebewesen besetzt ist
+                if distanz > 0 :
                     richtungs_x = diff_x / distanz
                     richtungs_y = diff_y / distanz
+                    ziel_x = self.x + richtungs_x * self.geschwindigkeit / 2
+                    ziel_y = self.y + richtungs_y * self.geschwindigkeit / 2
+                    
+                    if not umgebung.ist_position_besetzt(ziel_x, ziel_y, self):
+                         self.x = ziel_x
+                         self.y = ziel_y
 
-                    self.x += richtungs_x * self.geschwindigkeit / 2
-                    self.y += richtungs_y * self.geschwindigkeit / 2
+                    
         
         #Energieverbrauch
         self.energie -= GRAS_WACHSTUM + self.geschwindigkeit / 2 + self.ess_geschwindigkeit / 5 
@@ -126,7 +154,6 @@ class Lebewesen:
             neues_lebewesen.geschwindigkeit = self.geschwindigkeit
             neues_lebewesen.ess_geschwindigkeit = self.ess_geschwindigkeit
             neues_lebewesen.energie_kapazitaet = self.energie_kapazitaet
-            neues_lebewesen.energie = self.energie / 5
             neues_lebewesen.mutieren()
             umgebung.lebewesen.append(neues_lebewesen)
             self.nachkommen += 1 # erhöhe die Nachkommenzahl
@@ -159,7 +186,11 @@ class Lebewesen:
 
 
     def zeichnen(self, oberflaeche):
-        pygame.draw.rect(oberflaeche, self.farbe, (self.x, self.y, self.groesse, self.groesse))
+        pygame.draw.rect(oberflaeche, self.farbe, (self.x - self.groesse // 2, self.y - self.groesse // 2, self.groesse, self.groesse))
+    
+    def zeichnen_mittelpunkt(self, oberflaeche):
+        pygame.draw.rect(oberflaeche, BLAU, (self.x, self.y, 1, 1))
+
 
 class Umgebung:
     def __init__(self):
@@ -170,8 +201,9 @@ class Umgebung:
         self.anzahl_zellen_hoehe = self.hoehe // self.feld_groesse
         self.gras_menge = [[0 for _ in range(self.anzahl_zellen_breite)] for _ in range(self.anzahl_zellen_hoehe)]
         self.lebewesen = []
-        self.anzahl_lebewesen = 50
+        self.anzahl_lebewesen = 250
         self.tick = 0
+        self.population_daten = []
         self.initialisiere_lebewesen()
 
     def initialisiere_lebewesen(self):
@@ -187,7 +219,7 @@ class Umgebung:
         for y in range(self.anzahl_zellen_hoehe):
             for x in range(self.anzahl_zellen_breite):
                 if self.gras_menge[y][x] < 255:
-                    self.gras_menge[y][x] = min(self.gras_menge[y][x] + GRAS_WACHSTUM, 255)
+                    self.gras_menge[y][x] = min(self.gras_menge[y][x] + GRAS_WACHSTUM * random.uniform(0.8, 1.2), 255)
     
     def aktualisiere(self):
         lebewesen_zum_entfernen = []
@@ -212,11 +244,11 @@ class Umgebung:
                 print(f"  Essgeschwindigkeit: {bestes_lebewesen.ess_geschwindigkeit:.2f}")
                 print(f"  Energiekapazität: {bestes_lebewesen.energie_kapazitaet}")
                 print(f"  Energie: {bestes_lebewesen.energie:.2f}")
-                print(f"  Energy Verbrauch: {0.5 + bestes_lebewesen.geschwindigkeit / 2 + bestes_lebewesen.ess_geschwindigkeit / 5}")
+                print(f"  Energy Verbrauch: {0.5 + bestes_lebewesen.geschwindigkeit / 2 + bestes_lebewesen.ess_geschwindigkeit / 5:.2f}")
+                self.population_daten.append(len(self.lebewesen))
                 self.tick = 0
             else:
                 self.tick += 1
-
 
 
     def zeichnen(self, oberflaeche):
@@ -235,6 +267,15 @@ class Umgebung:
         # Lebewesen zeichnen
         for lebewesen in self.lebewesen:
             lebewesen.zeichnen(oberflaeche)
+            lebewesen.zeichnen_mittelpunkt(oberflaeche)
+
+    def ist_position_besetzt(self, x, y, aktuelles_lebewesen):
+      for lebewesen in self.lebewesen:
+          if lebewesen != aktuelles_lebewesen:
+             distanz = math.sqrt((lebewesen.x - x)**2 + (lebewesen.y - y)**2)
+             if distanz < lebewesen.groesse:
+                return True
+      return False
 
 
 # Hauptspielschleife
@@ -242,7 +283,11 @@ def spiel_schleife():
     umgebung = Umgebung()
     spiel_laeuft = True
     clock = pygame.time.Clock()
+    queue = multiprocessing.Queue()
 
+    graph_process = multiprocessing.Process(target=plot_population_process, args=(umgebung.population_daten, queue))
+    graph_process.start()
+    
     while spiel_laeuft:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -251,11 +296,17 @@ def spiel_schleife():
         umgebung.aktualisiere_gras()
         umgebung.aktualisiere()
         umgebung.zeichnen(FENSTER)
+
         pygame.display.flip()
+        if umgebung.tick % 30 == 0:
+           queue.put(umgebung.population_daten)
+
 
         clock.tick(30)
 
+    graph_process.terminate()
     pygame.quit()
+   
 
 if __name__ == "__main__":
     spiel_schleife()
