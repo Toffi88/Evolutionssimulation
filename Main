@@ -6,8 +6,8 @@ import math
 pygame.init()
 
 # Fensterdimensionen
-BREITE = 800
-HOEHE = 600
+BREITE = 1600
+HOEHE = 980
 FENSTER = pygame.display.set_mode((BREITE, HOEHE))
 pygame.display.set_caption("Evolutionäre Simulation")
 
@@ -32,7 +32,7 @@ MIN_energie_kapazitaet = 50
 MAX_energie_kapazitaet = 500
 
 #Einstellungen
-GRAS_WACHSTUM = 0.1
+GRAS_WACHSTUM = 0.2
 
 
 
@@ -44,60 +44,59 @@ class Lebewesen:
         self.geschwindigkeit = random.uniform(MIN_geschwindigkeit, MAX_geschwindigkeit)
         self.energie_kapazitaet = random.randint(MIN_energie_kapazitaet, MAX_energie_kapazitaet) #Maximale Energie
         self.energie = self.energie_kapazitaet / 5 #Startenergie
-        self.fress_radius = 20 #Radius, in dem gegessen werden kann
         self.ess_geschwindigkeit = random.uniform(MIN_ess_geschwindigkeit, MAX_ess_geschwindigkeit)  # Neue Essgeschwindigkeit
         self.farbe = (random.randint(50, 255), random.randint(50, 255), random.randint(50, 255))
+        self.nachkommen = 0
        
         
     #HAUPTFUNKTION Bewegung des Lebewesens
     def bewegen(self, umgebung):
-        if self.energie > 0:
-            # finde Feld auf dem sich Lebewesen befindet
-            feld_x = int(self.x // umgebung.feld_groesse)
-            feld_y = int(self.y // umgebung.feld_groesse)
+        # finde Feld auf dem sich Lebewesen befindet
+        feld_x = int(self.x // umgebung.feld_groesse)
+        feld_y = int(self.y // umgebung.feld_groesse)
 
-            # stelle sicher dass die feld_x und feld_y werte valid sind
-            if 0 <= feld_x < umgebung.anzahl_zellen_breite and 0 <= feld_y < umgebung.anzahl_zellen_hoehe:
-                # finde das Feld mit dem meisten Gras in der nähe
-                bestes_feld_x = feld_x
-                bestes_feld_y = feld_y
-                maximales_gras = umgebung.gras_menge[feld_y][feld_x]
+        # stelle sicher dass die feld_x und feld_y werte valid sind
+        if 0 <= feld_x < umgebung.anzahl_zellen_breite and 0 <= feld_y < umgebung.anzahl_zellen_hoehe:
+            # finde das Feld mit dem meisten Gras in der nähe
+            bestes_feld_x = feld_x
+            bestes_feld_y = feld_y
+            maximales_gras = umgebung.gras_menge[feld_y][feld_x]
 
 
-                # Wenn aktuelles Feld maximales Gras hat, nicht weiter suchen
-                ist_aktuell_max = True
+            # Wenn aktuelles Feld maximales Gras hat, nicht weiter suchen
+            ist_aktuell_max = True
 
-                for dy in range(-2, 3):
-                    for dx in range(-2, 3):
-                        nachbar_feld_x = feld_x + dx
-                        nachbar_feld_y = feld_y + dy
+            for dy in range(-2, 3):
+                for dx in range(-2, 3):
+                    nachbar_feld_x = feld_x + dx
+                    nachbar_feld_y = feld_y + dy
 
-                        if 0 <= nachbar_feld_x < umgebung.anzahl_zellen_breite and 0 <= nachbar_feld_y < umgebung.anzahl_zellen_hoehe:
-                            if umgebung.gras_menge[nachbar_feld_y][nachbar_feld_x] > maximales_gras:
-                                maximales_gras = umgebung.gras_menge[nachbar_feld_y][nachbar_feld_x]
-                                bestes_feld_x = nachbar_feld_x
-                                bestes_feld_y = nachbar_feld_y
-                                ist_aktuell_max = False # es gibt doch ein größeres Feld
+                    if 0 <= nachbar_feld_x < umgebung.anzahl_zellen_breite and 0 <= nachbar_feld_y < umgebung.anzahl_zellen_hoehe:
+                        if umgebung.gras_menge[nachbar_feld_y][nachbar_feld_x] > maximales_gras:
+                            maximales_gras = umgebung.gras_menge[nachbar_feld_y][nachbar_feld_x]
+                            bestes_feld_x = nachbar_feld_x
+                            bestes_feld_y = nachbar_feld_y
+                            ist_aktuell_max = False # es gibt doch ein größeres Feld
 
-                if ist_aktuell_max == False:
-                    # setze bewegungsrichtung zum besten Feld
-                    ziel_x = bestes_feld_x * umgebung.feld_groesse + umgebung.feld_groesse // 2
-                    ziel_y = bestes_feld_y * umgebung.feld_groesse + umgebung.feld_groesse // 2
+            if ist_aktuell_max == False:
+                # setze bewegungsrichtung zum besten Feld
+                ziel_x = bestes_feld_x * umgebung.feld_groesse + umgebung.feld_groesse // 2
+                ziel_y = bestes_feld_y * umgebung.feld_groesse + umgebung.feld_groesse // 2
 
-                    diff_x = ziel_x - self.x
-                    diff_y = ziel_y - self.y
+                diff_x = ziel_x - self.x
+                diff_y = ziel_y - self.y
 
-                    distanz = math.sqrt(diff_x**2 + diff_y**2)
+                distanz = math.sqrt(diff_x**2 + diff_y**2)
 
-                    if distanz > 0:
-                        richtungs_x = diff_x / distanz
-                        richtungs_y = diff_y / distanz
+                if distanz > 0:
+                    richtungs_x = diff_x / distanz
+                    richtungs_y = diff_y / distanz
 
-                        self.x += richtungs_x * self.geschwindigkeit
-                        self.y += richtungs_y * self.geschwindigkeit
-            
-            
-            self.energie -= 0.1 + self.geschwindigkeit / 2 #Energieverbrauch
+                    self.x += richtungs_x * self.geschwindigkeit / 2
+                    self.y += richtungs_y * self.geschwindigkeit / 2
+        
+        #Energieverbrauch
+        self.energie -= GRAS_WACHSTUM + self.geschwindigkeit / 2 + self.ess_geschwindigkeit / 5 
 
         # Begrenzung innerhalb des Fensters
         self.x = max(0, min(self.x, BREITE - self.groesse))
@@ -128,13 +127,19 @@ class Lebewesen:
             neues_lebewesen.energie_kapazitaet = self.energie_kapazitaet
             neues_lebewesen.mutieren()
             umgebung.lebewesen.append(neues_lebewesen)
+            self.nachkommen += 1 # erhöhe die Nachkommenzahl
 
     def mutieren(self):
         if random.random() < 0.1: # Mutationswahrscheinlichkeit (10%)
-            self.geschwindigkeit += random.uniform(-0.2, 0.2)
-            self.ess_geschwindigkeit += random.uniform(-0.2, 0.2)
-            self.energie_kapazitaet += random.randint(-10, 10)
-        
+            mutationsfaktor_geschwindigkeit = random.uniform(0.9, 1.1)
+            mutationsfaktor_ess_geschwindigkeit = random.uniform(0.9, 1.1)
+            mutationsfaktor_energie_kapazitaet = random.uniform(0.9, 1.1)
+                
+            self.geschwindigkeit *= mutationsfaktor_geschwindigkeit
+            self.ess_geschwindigkeit *= mutationsfaktor_ess_geschwindigkeit
+            self.energie_kapazitaet *= mutationsfaktor_energie_kapazitaet
+
+                
         # Sicherstellen das kein Attribut zu kleine oder große werte hat
         self.geschwindigkeit = max(MIN_geschwindigkeit, min(self.geschwindigkeit, MAX_geschwindigkeit))
         self.ess_geschwindigkeit = max(MIN_ess_geschwindigkeit, min(self.ess_geschwindigkeit, MAX_ess_geschwindigkeit))
@@ -164,6 +169,7 @@ class Umgebung:
         self.gras_menge = [[0 for _ in range(self.anzahl_zellen_breite)] for _ in range(self.anzahl_zellen_hoehe)]
         self.lebewesen = []
         self.anzahl_lebewesen = 50
+        self.tick = 0
         self.initialisiere_lebewesen()
 
     def initialisiere_lebewesen(self):
@@ -192,6 +198,24 @@ class Umgebung:
 
         for lebewesen in lebewesen_zum_entfernen:
            self.lebewesen.remove(lebewesen)
+        
+        # INFO 
+
+        # Finde lebensen mit meisten Nachkommen
+        if len(self.lebewesen) > 0 :
+            bestes_lebewesen = max(self.lebewesen, key=lambda lebewesen: lebewesen.nachkommen)
+            if self.tick >=30:
+                print(f"Bestes Lebewesen - Nachkommen:{bestes_lebewesen.nachkommen}")
+                print(f"  Geschwindigkeit: {bestes_lebewesen.geschwindigkeit:.2f}")
+                print(f"  Essgeschwindigkeit: {bestes_lebewesen.ess_geschwindigkeit:.2f}")
+                print(f"  Energiekapazität: {bestes_lebewesen.energie_kapazitaet}")
+                print(f"  Energie: {bestes_lebewesen.energie:.2f}")
+                print(f"  Energy Verbrauch: {0.5 + bestes_lebewesen.geschwindigkeit / 2 + bestes_lebewesen.ess_geschwindigkeit / 5}")
+                self.tick = 0
+            else:
+                self.tick += 1
+
+
 
     def zeichnen(self, oberflaeche):
         oberflaeche.fill(SCHWARZ)  # Hintergrundfarbe ist jetzt schwarz
