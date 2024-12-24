@@ -157,7 +157,7 @@ class Lebewesen:
       else:
         return False
 
-
+    #Zeichnen des Lebewesens
     def zeichnen(self, oberflaeche):
         pygame.draw.rect(oberflaeche, self.farbe, (self.x, self.y, self.groesse, self.groesse))
 
