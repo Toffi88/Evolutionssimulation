@@ -36,6 +36,8 @@ GRAS_WACHSTUM = 0.2
 
 
 
+
+
 class Lebewesen:
     def __init__(self, x, y):
         self.x = x
