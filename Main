@@ -35,6 +35,8 @@ MAX_energie_kapazitaet = 500
 GRAS_WACHSTUM = 0.2
 
 
+
+#Lebewesen Klasse
 class Lebewesen:
     def __init__(self, x, y):
         self.x = x
