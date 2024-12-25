@@ -110,19 +110,14 @@ class Lebewesen:
                 diff_y = ziel_y - self.y
 
                 distanz = math.sqrt(diff_x**2 + diff_y**2)
-
-                # Überprüfe, ob die Zielposition durch ein anderes Lebewesen besetzt ist
-                if distanz > 0 :
+                
+                if distanz > 0:
                     richtungs_x = diff_x / distanz
                     richtungs_y = diff_y / distanz
                     ziel_x = self.x + richtungs_x * self.geschwindigkeit / 2
                     ziel_y = self.y + richtungs_y * self.geschwindigkeit / 2
-                    
-                    if not umgebung.ist_position_besetzt(ziel_x, ziel_y, self):
-                         self.x = ziel_x
-                         self.y = ziel_y
-
-                    
+                    self.x = ziel_x
+                    self.y = ziel_y
         
         #Energieverbrauch
         self.energie -= GRAS_WACHSTUM + self.geschwindigkeit / 2 + self.ess_geschwindigkeit / 5 
@@ -269,13 +264,7 @@ class Umgebung:
             lebewesen.zeichnen(oberflaeche)
             lebewesen.zeichnen_mittelpunkt(oberflaeche)
 
-    def ist_position_besetzt(self, x, y, aktuelles_lebewesen):
-      for lebewesen in self.lebewesen:
-          if lebewesen != aktuelles_lebewesen:
-             distanz = math.sqrt((lebewesen.x - x)**2 + (lebewesen.y - y)**2)
-             if distanz < lebewesen.groesse:
-                return True
-      return False
+
 
 
 # Hauptspielschleife
